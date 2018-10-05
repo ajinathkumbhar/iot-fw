@@ -3,6 +3,8 @@
 
 - ESP8266EX board
 
+![alt text](https://raw.githubusercontent.com/ajinathkumbhar/iot-fw/blob/master/esp8266ex/documents/Ndemcu_module-500x500.JPG
+
 Setup toolchain and sdk
 ```sh
 $ cd iot-fw/esp8266ex/toolchain-sdk
