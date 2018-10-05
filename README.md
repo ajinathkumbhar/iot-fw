@@ -3,7 +3,7 @@
 
 - ESP8266EX board
 
-![alt text](https://raw.githubusercontent.com/ajinathkumbhar/iot-fw/blob/master/esp8266ex/documents/Ndemcu_module-500x500.JPG
+![alt text](https://github.com/ajinathkumbhar/iot-fw/blob/master/esp8266ex/documents/Ndemcu_module-500x500.JPG)
 
 Setup toolchain and sdk
 ```sh
@@ -45,4 +45,5 @@ $ setup-custom-baudrate /dev/ttyUSB0 74880
 # Reference
 
 [Espressif](https://www.espressif.com/en/products/hardware/esp-wroom-02/overview)
+
 [Espressif github](https://github.com/espressif)
