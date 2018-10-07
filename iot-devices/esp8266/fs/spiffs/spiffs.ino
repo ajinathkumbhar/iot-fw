@@ -73,17 +73,22 @@ void setup() {
     //Write data to file
     Serial.println("storing wifi configuration");
     f.print("ssid:TX2");
-    f.print("password:TX2@rr112");
+    f.print("password:TX2XXXX");
     f.close();  
   }
+}
+
+bool setup_wifi_conf() {
+
 }
 
 void loop() {
   int i;
 
+  
   //Read File data
   File f = SPIFFS.open(wificonf, "r");
-
+  
   if (!f) {
     Serial.println("file open failed");
   }
