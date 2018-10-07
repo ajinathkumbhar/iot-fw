@@ -13,12 +13,13 @@ $ setup.sh
 ```
 Setup environment
 ```sh
-$ cd iot-fw/esp8266ex/
+$ cd iot-fw/esp8266ex/toolchain-sdk
 $ source build/envsetup.sh
 ```
 
 Build hello world
 ```sh
+$ cd iot-fw/esp8266ex/toolchain-sdk
 $ source build/envsetup.sh
 $ cd ESP8266_RTOS_SDK/examples/get-started/project_template
 $ make menuconfig
