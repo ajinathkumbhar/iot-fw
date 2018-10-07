@@ -9,7 +9,9 @@
 #include <stdio.h>
 
 #include "esp_system.h"
+#include <esp_log.h>
 
+static const char *TAG = "esp_app";
 /******************************************************************************
  * FunctionName : app_main
  * Description  : entry of user application, init user function here
@@ -18,5 +20,5 @@
 *******************************************************************************/
 void app_main(void)
 {
-    printf("SDK version:%s\n", esp_get_idf_version());
+    ESP_LOGI("SDK version:%s\n", esp_get_idf_version());
 }
