@@ -32,10 +32,11 @@ struct spiffs_config {
 
 typedef struct spiffs_config spiffs_config_t;
 
-int user_spiffs_fs_init(void);
+
+int user_spiffs_fs_init(spiffs_config_t fs_config);
 int user_spiffs_fs_format(void);
-int user_spiffs_write(wifi_config_t);
-int user_spiffs_read(wifi_config_t);
+int user_spiffs_write(wifi_config_t * wcfg);
+int user_spiffs_read(wifi_config_t * wcfg);
 
 int set_wifi_config(wifi_config_t cfg);
 wifi_config_t get_wifi_config(void);
