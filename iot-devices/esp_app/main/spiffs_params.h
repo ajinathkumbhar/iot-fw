@@ -6,11 +6,11 @@
 #ifndef __SPIFFS_TEST_PARAMS_H__
 #define __SPIFFS_TEST_PARAMS_H__
 
-#define FS1_FLASH_SIZE      0x2000
-#define FS2_FLASH_SIZE      (128*1024)
 
+
+#define FS1_FLASH_SIZE      0x2000
 #define FS1_FLASH_ADDR      0x8c000
-#define FS2_FLASH_ADDR      (1280*1024)
+#define FS1_ERASE_ADDR      0x8c
 
 #define SECTOR_SIZE         (4*1024)
 #define LOG_BLOCK           (SECTOR_SIZE)

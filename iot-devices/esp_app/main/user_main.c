@@ -24,28 +24,37 @@ static const char *TAG = "esp_app";
 void app_main(void)
 {
     spiffs_config_t spiffs_cfg = spiffs_config_initializer;
-    wifi_config_t hw_network = wifi_config_initializer;
-    wifi_config_t read_back = wifi_config_initializer;
+    int ret;
 
-    spiffs_cfg.start_offset = FS1_FLASH_ADDR;
+    spiffs_cfg.start_offset = 0x8c000;
     spiffs_cfg.size = FS1_FLASH_SIZE;
 
-    char * ssid = "test_ssid\0";
-    char * pass = "test_password\0";
-
-    strcpy(hw_network.ssid,ssid);
-    strcpy(hw_network.password,pass);
-
-    user_spiffs_fs_init(spiffs_cfg);
-    set_wifi_config(hw_network);
-    read_back = get_wifi_config();
-
-    char ssid_n[20] = {0};
-    char pass_n[20] = {0};
-
-    strcpy(ssid_n,read_back.ssid);
-    strcpy(pass_n,read_back.password);
-
-    // ESP_LOGI(TAG, " ssid : %s  password : %s\n", ssid_n, pass_n);
+    ESP_LOGI(TAG,"--------------------------------------");
     ESP_LOGI(TAG,"SDK version:%s\n", esp_get_idf_version());
+    ESP_LOGI(TAG,"--------------------------------------");
+
+    ret = user_spiffs_fs_init(spiffs_cfg);
+    if ( ret != ESP_OK ) {
+        ESP_LOGE(TAG, "Failed to user_spiffs_fs_init ");
+    } else
+        ESP_LOGI(TAG, "spiffs init.....ok");
+
+    user_config_t user_cfg = user_config_initializer;
+    strcpy(user_cfg.device_id,"AD4545");
+    strcpy(user_cfg.ssid,"SmartEmployee");
+    strcpy(user_cfg.password,"TronX@$#");
+
+    ret = set_user_config(user_cfg);
+    if ( ret != ESP_OK ) {
+        ESP_LOGE(TAG, "set_user_config.....fail");
+    } else
+        ESP_LOGI(TAG, "set_user_config.....ok");
+
+    user_config_t user_cfg_1 = user_config_initializer;
+    user_cfg_1 = get_user_config();
+    ESP_LOGI(TAG,"magic     : %s", user_cfg_1.magic);
+    ESP_LOGI(TAG,"device_id : %s", user_cfg_1.device_id);
+    ESP_LOGI(TAG,"ssid      : %s", user_cfg_1.ssid);
+    ESP_LOGI(TAG,"password  : %s", user_cfg_1.password);
+
 }
