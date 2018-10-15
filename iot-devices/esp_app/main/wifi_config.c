@@ -8,7 +8,7 @@
 static const char *TAG = "wifi_config";
 
 spiffs_config_t mSpiffs_config = spiffs_config_initializer;
-int force_format = TRUE;
+int force_format = FALSE;
 
 int user_spiffs_fs_format() {
     char magic_num[FS_MAGIC_SIZE] = FS_MAGIC_NUM;
@@ -17,7 +17,7 @@ int user_spiffs_fs_format() {
     int ret;
 
     for ( int i = 0; i < erase_sector_count ; i++ ) {
-        erase_sector_addr = i * SECTOR_SIZE + FS1_ERASE_ADDR;
+        erase_sector_addr = FS1_ERASE_ADDR ;//+ ( i * SECTOR_SIZE) ;
         ESP_LOGI(TAG,"spi_flash_erase_sector with %02x",erase_sector_addr);
         ret = spi_flash_erase_sector(erase_sector_addr);
         if ( ret != ESP_OK ) {

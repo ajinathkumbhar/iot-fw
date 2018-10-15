@@ -8,7 +8,7 @@
 
 
 
-#define FS1_FLASH_SIZE      0x2000
+#define FS1_FLASH_SIZE      0x2000      // 8KB
 #define FS1_FLASH_ADDR      0x8c000
 #define FS1_ERASE_ADDR      0x8c
 
