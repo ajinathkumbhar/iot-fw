@@ -13,6 +13,7 @@
 #include "wifi_config.h"
 #include "string.h"
 #include "spiffs_params.h"
+#include "smartconfig.h"
 
 static const char *TAG = "esp_app";
 /******************************************************************************
@@ -23,6 +24,9 @@ static const char *TAG = "esp_app";
 *******************************************************************************/
 void app_main(void)
 {
+    // ESP_ERROR_CHECK( nvs_flash_init() );
+
+
     spiffs_config_t spiffs_cfg = spiffs_config_initializer;
     int ret;
 
@@ -30,7 +34,7 @@ void app_main(void)
     spiffs_cfg.size = FS1_FLASH_SIZE;
 
     ESP_LOGI(TAG,"--------------------------------------");
-    ESP_LOGI(TAG,"SDK version:%s\n", esp_get_idf_version());
+    ESP_LOGI(TAG,"SDK version sc disabled :%s\n", esp_get_idf_version());
     ESP_LOGI(TAG,"--------------------------------------");
 
     ret = user_spiffs_fs_init(spiffs_cfg);
@@ -56,5 +60,7 @@ void app_main(void)
     ESP_LOGI(TAG,"device_id : %s", user_cfg_1.device_id);
     ESP_LOGI(TAG,"ssid      : %s", user_cfg_1.ssid);
     ESP_LOGI(TAG,"password  : %s", user_cfg_1.password);
+
+    initialise_wifi();
 
 }
