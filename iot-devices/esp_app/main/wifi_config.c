@@ -11,11 +11,13 @@ spiffs_config_t mSpiffs_config = spiffs_config_initializer;
 int force_format = FALSE;
 
 int user_spiffs_fs_format() {
-    char magic_num[FS_MAGIC_SIZE] = FS_MAGIC_NUM;
+    char magic_num[FS_MAGIC_SIZE] = fs_magic_num_initializer;
+    char fdr_check[FS_FDR_CHK_SIZE] = fs_fdr_check_initializer;
     int erase_sector_count = mSpiffs_config.size / SECTOR_SIZE;
     int erase_sector_addr = 0x00;
     int ret;
 
+    // Erase sector from FS1_ERASE_ADDR
     for ( int i = 0; i < erase_sector_count ; i++ ) {
         erase_sector_addr = FS1_ERASE_ADDR ;//+ ( i * SECTOR_SIZE) ;
         ESP_LOGI(TAG,"spi_flash_erase_sector with %02x",erase_sector_addr);
@@ -24,10 +26,17 @@ int user_spiffs_fs_format() {
             ESP_LOGE(TAG,"spi_flash_erase_sector fail err: %8x",ret);
         }
     }
-    ret = spi_flash_write(FS_MAGIC_OFFSET, magic_num, sizeof(magic_num));
+    // Write magic number
+    ret = spi_flash_write(FS_MAGIC_OFFSET, magic_num, FS_MAGIC_SIZE);
     if ( ret != ESP_OK ) {
         ESP_LOGE(TAG,"magic setup fail err: %8x",ret);
     }
+    // Write fdr check bit
+    ret = spi_flash_write(FS_FDR_CHK_OFFSET, fdr_check, FS_FDR_CHK_SIZE);
+    if ( ret != ESP_OK ) {
+        ESP_LOGE(TAG,"fdr check setup fail err: %8x",ret);
+    }
+
     return ret;
 }
 
@@ -68,30 +77,43 @@ int user_spiffs_fs_init(spiffs_config_t fs_config) {
 }
 
 
-int set_user_config(user_config_t user_cfg) {
+int set_user_config(user_config_t * user_cfg) {
     esp_err_t ret = ESP_OK;
 
-    ESP_LOGI(TAG,"user_cfg.mgic  : %s",user_cfg.magic);
-    ESP_LOGI(TAG,"user_cfg.dev   : %s",user_cfg.device_id);
-    ESP_LOGI(TAG,"user_cfg.ssd   : %s",user_cfg.ssid);
-    ESP_LOGI(TAG,"user_cfg.pass  : %s",user_cfg.password);
+    ESP_LOGI(TAG,"user_cfg.mgic  : %s",user_cfg->magic);
+    ESP_LOGI(TAG,"user_cfg.dev   : %s",user_cfg->device_id);
+    ESP_LOGI(TAG,"user_cfg.ssd   : %s",user_cfg->ssid);
+    ESP_LOGI(TAG,"user_cfg.pass  : %s",user_cfg->password);
 
-    ret = spi_flash_write(FS_MAGIC_OFFSET, user_cfg.magic,FS_MAGIC_SIZE);
+    ESP_LOGI(TAG,"FS_MAGIC_OFFSET   : %8x",FS_MAGIC_OFFSET);
+    ESP_LOGI(TAG,"FS_FDR_CHK_OFFSET : %8x",FS_FDR_CHK_OFFSET);
+    ESP_LOGI(TAG,"DEV_ID_OFFSET,    : %8x",DEV_ID_OFFSET);
+    ESP_LOGI(TAG,"SSID_OFFSET,      : %8x",SSID_OFFSET);
+    ESP_LOGI(TAG,"PASSWORD_OFFSET   : %8x",PASSWORD_OFFSET);
+
+
+
+    ret = spi_flash_write(FS_MAGIC_OFFSET, user_cfg->magic,FS_MAGIC_SIZE);
     if ( ret != ESP_OK ) {
         ESP_LOGE(TAG,"magic write fail err: %8x",ret);
     }
 
-    ret = spi_flash_write(DEV_ID_OFFSET, user_cfg.device_id, DEV_ID_SIZE);
+    ret = spi_flash_write(FS_FDR_CHK_OFFSET, user_cfg->fdr_check, FS_FDR_CHK_SIZE);
     if ( ret != ESP_OK ) {
-        ESP_LOGE(TAG,"device id read fail err: %8x",ret);
+        ESP_LOGE(TAG,"fdr write fail err: %8x",ret);
     }
 
-    ret = spi_flash_write(SSID_OFFSET, user_cfg.ssid, SSID_SIZE);
+    ret = spi_flash_write(DEV_ID_OFFSET, user_cfg->device_id, DEV_ID_SIZE);
+    if ( ret != ESP_OK ) {
+        ESP_LOGE(TAG,"device id write fail err: %8x",ret);
+    }
+
+    ret = spi_flash_write(SSID_OFFSET, user_cfg->ssid, SSID_SIZE);
     if ( ret != ESP_OK ) {
         ESP_LOGE(TAG,"ssid write fail err: %8x",ret);
     }
 
-    ret = spi_flash_write(PASSWORD_OFFSET, user_cfg.password, PASSWORD_SIZE);
+    ret = spi_flash_write(PASSWORD_OFFSET, user_cfg->password, PASSWORD_SIZE);
     if ( ret != ESP_OK ) {
         ESP_LOGE(TAG,"password write fail err: %8x",ret);
     }
@@ -111,6 +133,11 @@ user_config_t get_user_config() {
     ret = spi_flash_read(FS_MAGIC_OFFSET, user_cfg.magic,FS_MAGIC_SIZE);
     if ( ret != ESP_OK ) {
         ESP_LOGE(TAG,"magic read fail err: %8x",ret);
+    }
+
+    ret = spi_flash_read(FS_FDR_CHK_OFFSET, user_cfg.fdr_check, FS_FDR_CHK_SIZE);
+    if ( ret != ESP_OK ) {
+        ESP_LOGE(TAG,"fdr read fail err: %8x",ret);
     }
 
     ret = spi_flash_read(DEV_ID_OFFSET, user_cfg.device_id, DEV_ID_SIZE);

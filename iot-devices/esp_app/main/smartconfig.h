@@ -19,10 +19,11 @@
 #include "nvs_flash.h"
 #include "tcpip_adapter.h"
 #include "esp_smartconfig.h"
+#include "wifi_config.h"
 
 void smartconfig_example_task(void * parm);
 esp_err_t event_handler(void *ctx, system_event_t *event);
-void initialise_wifi(void);
+user_config_t initialise_wifi(EventGroupHandle_t * wifi_conn_group);
 void sc_callback(smartconfig_status_t status, void *pdata);
 void smartconfig_example_task(void * parm);
 

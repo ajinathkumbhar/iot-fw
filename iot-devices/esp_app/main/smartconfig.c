@@ -11,6 +11,7 @@
 
 /* FreeRTOS event group to signal when we are connected & ready to make a request */
 static EventGroupHandle_t wifi_event_group;
+static EventGroupHandle_t * mwifi_conn_group;
 
 /* The event group allows multiple bits for each event,
    but we only care about one event - are we connected
@@ -20,6 +21,7 @@ static const int ESPTOUCH_DONE_BIT = BIT1;
 static const char *TAG = "sc";
 
 void smartconfig_example_task(void * parm);
+user_config_t user_cfg = user_config_initializer;
 
 esp_err_t event_handler(void *ctx, system_event_t *event)
 {
@@ -40,7 +42,7 @@ esp_err_t event_handler(void *ctx, system_event_t *event)
     return ESP_OK;
 }
 
-void initialise_wifi(void)
+user_config_t initialise_wifi(EventGroupHandle_t * wifi_conn_group)
 {
     tcpip_adapter_init();
     wifi_event_group = xEventGroupCreate();
@@ -51,6 +53,16 @@ void initialise_wifi(void)
     ESP_ERROR_CHECK( esp_wifi_init(&cfg) );
     ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
     ESP_ERROR_CHECK( esp_wifi_start() );
+    mwifi_conn_group = wifi_conn_group;
+    // while(1) {
+    //     uxBits = xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT | ESPTOUCH_DONE_BIT, true, false, portMAX_DELAY); 
+    //     if(uxBits & ESPTOUCH_DONE_BIT) {
+    //         ESP_LOGI(TAG, "WiFi ESPTOUCH_DONE_BIT Connected to ap");
+    //         break;
+    //     }
+    // }
+
+    return user_cfg;
 }
 
 void sc_callback(smartconfig_status_t status, void *pdata)
@@ -68,11 +80,13 @@ void sc_callback(smartconfig_status_t status, void *pdata)
         case SC_STATUS_LINK:
             ESP_LOGI(TAG, "SC_STATUS_LINK");
             wifi_config_t *wifi_config = pdata;
-            ESP_LOGI(TAG, "SSID:%s", wifi_config->sta.ssid);
-            ESP_LOGI(TAG, "PASSWORD:%s", wifi_config->sta.password);
+            ESP_LOGI(TAG, "SSID:%s , size : %d ", wifi_config->sta.ssid,sizeof(wifi_config->sta.ssid));
+            ESP_LOGI(TAG, "PASSWORD:%s , size : %d ", wifi_config->sta.password,sizeof(wifi_config->sta.password));
             ESP_ERROR_CHECK( esp_wifi_disconnect() );
             ESP_ERROR_CHECK( esp_wifi_set_config(ESP_IF_WIFI_STA, wifi_config) );
             ESP_ERROR_CHECK( esp_wifi_connect() );
+            strncpy(user_cfg.ssid,(char *)wifi_config->sta.ssid,sizeof(wifi_config->sta.ssid));
+            strncpy(user_cfg.password,(char *)wifi_config->sta.password,sizeof(wifi_config->sta.password));
             break;
         case SC_STATUS_LINK_OVER:
             ESP_LOGI(TAG, "SC_STATUS_LINK_OVER");
@@ -100,6 +114,7 @@ void smartconfig_example_task(void * parm)
         }
         if(uxBits & ESPTOUCH_DONE_BIT) {
             ESP_LOGI(TAG, "smartconfig over");
+            xEventGroupSetBits(*mwifi_conn_group, ESPTOUCH_DONE_BIT);
             esp_smartconfig_stop();
             vTaskDelete(NULL);
         }
