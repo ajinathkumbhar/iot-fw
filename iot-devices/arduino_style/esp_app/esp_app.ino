@@ -16,10 +16,17 @@ struct user_config {
 
 typedef user_config user_config_t;
 
-//enum local_boolean {
-//  true=1,
-//  false=0
-//}
+
+// MQTT config
+const char* mqtt_server = "iot.eclipse.org";
+WiFiClient espClient;
+PubSubClient client(espClient);
+
+// Timers auxiliar variables
+long now = millis();
+long lastMeasure = 0;
+
+
 bool user_spiffs_fmt() {
   if (!SPIFFS.format()) {
     Serial.println("File System Formatting Error");
@@ -30,7 +37,7 @@ bool user_spiffs_fmt() {
   if (!foot_print) {
     Serial.println("file open failed");
     return false;
-  } 
+  }
   foot_print.println("Format Complete");
   foot_print.close();
   return true;
@@ -41,12 +48,12 @@ bool is_user_spiffs_fmt() {
   if (!SPIFFS.exists(FMT_FOOT_PRINT)) {
     Serial.println("fs not found");
     return false;
-  } 
+  }
   Serial.println("SPIFFS found");
   return true;
 }
 
-// fs init 
+// fs init
 bool user_spiffs_init() {
   // Initialize File System
   if (!SPIFFS.begin()) {
@@ -62,7 +69,7 @@ bool user_spiffs_init() {
       return false;
     }
   }
-  Serial.println("fs init done"); 
+  Serial.println("fs init done");
   return true;
 }
 
@@ -97,14 +104,14 @@ void start_smart_config_setup(user_config_t * user_cfg) {
     Serial.print(".");
   }
   Serial.println("done!");
-  
-  Serial.println("WiFi connected");  
+
+  Serial.println("WiFi connected");
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
 
   strncpy(user_cfg->ssid,ssid,sizeof(ssid));
   strncpy(user_cfg->password,password,sizeof(password));
-  
+
 }
 
 int load_user_config_from_flash(user_config_t * user_cfg) {
@@ -114,7 +121,7 @@ int load_user_config_from_flash(user_config_t * user_cfg) {
     Serial.println("file open failed");
     return false;
   }
-  
+
   f.readBytes(user_cfg->status,BUF_SIZE);
   f.readBytes(user_cfg->dev_id,BUF_SIZE);
   f.readBytes(user_cfg->ssid,BUF_SIZE);
@@ -147,7 +154,7 @@ int load_user_config_to_flash(user_config_t * user_cfg) {
   f.write((uint8_t *)user_cfg->dev_id,(size_t)BUF_SIZE);
   f.write((uint8_t *)user_cfg->ssid,(size_t)BUF_SIZE);
   f.write((uint8_t *)user_cfg->password,(size_t)BUF_SIZE);
-  f.close();  
+  f.close();
   delay(1000);
   return true;
 }
@@ -164,8 +171,8 @@ void wifi_setup() {
     user_cfg.status[0] = 0xff;
     load_user_config_to_flash(&user_cfg);
     return;
-  } 
-  
+  }
+  Serial.println("User config found...");
   WiFi.begin(user_cfg.ssid, user_cfg.password);
   Serial.print("Connecting ...");
   while (WiFi.status() != WL_CONNECTED)
@@ -176,7 +183,74 @@ void wifi_setup() {
   Serial.println();
   Serial.print("Connected, IP address: ");
   Serial.println(WiFi.localIP());
-  
+
+}
+
+//MQTT message callback
+void callback(String topic, byte* message, unsigned int length) {
+  Serial.print("Message arrived on topic: ");
+  Serial.print(topic);
+  Serial.print(". Message: ");
+  String messageTemp;
+
+  for (int i = 0; i < length; i++) {
+    Serial.print((char)message[i]);
+    messageTemp += (char)message[i];
+  }
+  Serial.println();
+
+  // Feel free to add more if statements to control more GPIOs with MQTT
+
+  // If a message is received on the topic room/lamp, you check if the message is either on or off. Turns the lamp GPIO according to the message
+  if(topic=="esp8266/room/lamp"){
+      Serial.print("Changing Room lamp to ");
+      if(messageTemp == "on"){
+        Serial.print("On");
+      }
+      else if(messageTemp == "off"){
+        Serial.print("Off");
+      }
+  }
+  Serial.println();
+}
+
+
+// This functions reconnects your ESP8266 to your MQTT broker
+// Change the function below if you want to subscribe to more topics with your ESP8266
+void reconnect() {
+  // Loop until we're reconnected
+  while (!client.connected()) {
+    Serial.print("Attempting MQTT connection...");
+    // Attempt to connect
+    /*
+     YOU MIGHT NEED TO CHANGE THIS LINE, IF YOU'RE HAVING PROBLEMS WITH MQTT MULTIPLE CONNECTIONS
+     To change the ESP device ID, you will have to give a new name to the ESP8266.
+     Here's how it looks:
+       if (client.connect("ESP8266Client")) {
+     You can do it like this:
+       if (client.connect("ESP1_Office")) {
+     Then, for the other ESP:
+       if (client.connect("ESP2_Garage")) {
+      That should solve your MQTT multiple connections problem
+    */
+    if (client.connect("ESP8266Client")) {
+      Serial.println("connected");
+      // Subscribe or resubscribe to a topic
+      // You can subscribe to more topics (to control more LEDs in this example)
+      client.subscribe("esp8266/room/lamp");
+    } else {
+      Serial.print("failed, rc=");
+      Serial.print(client.state());
+      Serial.println(" try again in 5 seconds");
+      // Wait 5 seconds before retrying
+      delay(5000);
+    }
+  }
+}
+
+void mqtt_setup() {
+  client.setServer(mqtt_server, 1883);
+  client.setCallback(callback);
 }
 
 void setup() {
@@ -185,11 +259,39 @@ void setup() {
   if (!user_spiffs_init()) {
       Serial.println("failed to setup file system");
   }
+  Serial.println("user_spiffs_init.......ok");
   wifi_setup();
-  Serial.println("setup.......ok");
+  Serial.println("wifi_setup.......ok");
+  mqtt_setup();
+  Serial.println("mqtt_setup.......ok");
+  randomSeed(analogRead(0));
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
+  static char payload[BUF_SIZE] = {0};
+  long randNumber;
+  randNumber = random(300);
+  if (!client.connected()) {
+    reconnect();
+  }
+  if(!client.loop())
+    client.connect("ESP8266Client");
+  now = millis();
 
+  if (now - lastMeasure > 1000) {
+     lastMeasure = now;
+    // Read temperature as Celsius (the default)
+    float temp = randNumber;
+
+    // Check if any reads failed and exit early (to try again).
+    if (isnan(temp)) {
+      Serial.println("Failed to read data from sensor!");
+      return;
+    }
+
+    dtostrf(temp, 6, 2, payload);
+    client.publish("esp8266/room/temperature", payload);
+
+  }
 }
