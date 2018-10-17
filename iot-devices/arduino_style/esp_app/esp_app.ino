@@ -3,10 +3,40 @@
 #include <PubSubClient.h>
 
 #define BUF_SIZE                16
-#define user_config_initilizer  { {0}, {'E','S','P','8','2','6','6','\0'}, {0}, {0} }
+#define user_config_initilizer  { {0}, {0}, {0}, {0} }
 #define FMT_FOOT_PRINT          "fmt_done.txt"
 #define WIFI_CONF               "/wifi_conf.txt"
 
+
+
+// MQTT config
+/*
+ * Registration : 
+ * Pub - esp8266/regRes/<dev_id>
+ * Sub - esp8266/regReq  "<dev_id>" 
+ *  
+ * 
+ * 
+ * 
+ * 
+ */
+
+#define TOPIC_REG_REQ     "esp8266/regReq"
+#define TOPIC_REG_RES     "esp8266/regRes/"
+
+// topic for ac controller
+#define TOPIC_AC_TEMP_STATUS     "esp8266/ac/temperature/status"
+#define TOPIC_AC_TEMP_ACTION     "esp8266/ac/temperature/action"
+#define TOPIC_AC_POWER           "esp8266/ac/power/action"
+
+const char* mqtt_broker_host = "iot.eclipse.org";
+const uint16_t mqtt_broker_port = 1883;
+WiFiClient espClient;
+PubSubClient client(espClient);
+bool is_registered = false;
+String mDevice_id;
+String client_id;
+// User configuration 
 struct user_config {
   char status[BUF_SIZE];
   char dev_id[BUF_SIZE];
@@ -17,16 +47,11 @@ struct user_config {
 typedef user_config user_config_t;
 
 
-// MQTT config
-const char* mqtt_server = "iot.eclipse.org";
-WiFiClient espClient;
-PubSubClient client(espClient);
+/*
+ * Logging
+ */
 
-// Timers auxiliar variables
-long now = millis();
-long lastMeasure = 0;
-
-
+/* spiffs format  */
 bool user_spiffs_fmt() {
   if (!SPIFFS.format()) {
     Serial.println("File System Formatting Error");
@@ -43,7 +68,7 @@ bool user_spiffs_fmt() {
   return true;
 }
 
-// Check file mount and fs format
+/* Check file mount and fs format */
 bool is_user_spiffs_fmt() {
   if (!SPIFFS.exists(FMT_FOOT_PRINT)) {
     Serial.println("fs not found");
@@ -53,7 +78,7 @@ bool is_user_spiffs_fmt() {
   return true;
 }
 
-// fs init
+/* fs init */
 bool user_spiffs_init() {
   // Initialize File System
   if (!SPIFFS.begin()) {
@@ -73,7 +98,9 @@ bool user_spiffs_init() {
   return true;
 }
 
-
+/*
+ * smart config setup 
+ */
 void start_smart_config_setup(user_config_t * user_cfg) {
   char ssid[BUF_SIZE] = {0};
   char password[BUF_SIZE] = {0};
@@ -114,6 +141,7 @@ void start_smart_config_setup(user_config_t * user_cfg) {
 
 }
 
+/* Get user config from flash */
 int load_user_config_from_flash(user_config_t * user_cfg) {
   //Read File data
   File f = SPIFFS.open(WIFI_CONF, "r");
@@ -141,7 +169,7 @@ int load_user_config_from_flash(user_config_t * user_cfg) {
   return true;
 }
 
-
+/* Set user config in flash */
 int load_user_config_to_flash(user_config_t * user_cfg) {
   File f = SPIFFS.open(WIFI_CONF, "w");
   if (!f) {
@@ -159,8 +187,11 @@ int load_user_config_to_flash(user_config_t * user_cfg) {
   return true;
 }
 
+
+/* Wifi connection setup */
 void wifi_setup() {
   user_config_t user_cfg = user_config_initilizer;
+  String dev_id;
   if (load_user_config_from_flash(&user_cfg) != true ) {
       Serial.println("Err : load_user_wifi_config.......fail");
   }
@@ -169,9 +200,12 @@ void wifi_setup() {
     Serial.println("Err : user config corroupted, need to reconfigure.......fail");
     start_smart_config_setup(&user_cfg);
     user_cfg.status[0] = 0xff;
+    dev_id = get_device_id();
+    strcpy(user_cfg.dev_id,dev_id.c_str());
     load_user_config_to_flash(&user_cfg);
     return;
   }
+  mDevice_id = String(user_cfg.dev_id);
   Serial.println("User config found...");
   WiFi.begin(user_cfg.ssid, user_cfg.password);
   Serial.print("Connecting ...");
@@ -183,61 +217,114 @@ void wifi_setup() {
   Serial.println();
   Serial.print("Connected, IP address: ");
   Serial.println(WiFi.localIP());
+  
 
 }
 
-//MQTT message callback
+/* Generate device id */
+String get_device_id() {
+  String dev_id = "ESP8266C-";   // Create a random MQTT client ID
+  dev_id += String(random(0xfff), HEX);
+  Serial.println("Dev id generated : ");
+  Serial.print(dev_id);
+  return dev_id;
+}
+
+/*
+ * Device registration
+ */
+
+ void device_setup() {
+  user_config_t user_cfg = user_config_initilizer;
+  char payload[BUF_SIZE] = {0};
+  String topic_res(TOPIC_REG_RES);
+  topic_res += mDevice_id;
+
+  if (load_user_config_from_flash(&user_cfg) != true ) {
+      Serial.println("Err : device_setup .......fail");
+  }
+
+  if (user_cfg.status[1] == 0xff) {
+      Serial.println("Device registerd...");
+      return;
+  }
+  Serial.println("Device not registerd...");
+  strncpy(payload,user_cfg.dev_id,sizeof(user_cfg.dev_id));
+
+  client.publish(TOPIC_REG_REQ,payload);
+  Serial.println("Device registration req sent...");
+  Serial.print("Topic   : ");
+  Serial.println(TOPIC_REG_REQ);
+  Serial.print("payload : ");
+  Serial.println(payload);
+
+  Serial.print("Subscribe to : ");
+  Serial.println(topic_res.c_str());
+  client.subscribe(topic_res.c_str());
+
+ }
+
+/* MQTT message callback */
 void callback(String topic, byte* message, unsigned int length) {
   Serial.print("Message arrived on topic: ");
   Serial.print(topic);
   Serial.print(". Message: ");
   String messageTemp;
-
+  
+  String reg_res_topic(TOPIC_REG_RES);  //"esp8266/regRes/"
+  reg_res_topic += mDevice_id;
+  String res_topic = topic.substring(0,reg_res_topic.length()); 
+    
   for (int i = 0; i < length; i++) {
     Serial.print((char)message[i]);
     messageTemp += (char)message[i];
   }
+  
   Serial.println();
-
-  // Feel free to add more if statements to control more GPIOs with MQTT
-
-  // If a message is received on the topic room/lamp, you check if the message is either on or off. Turns the lamp GPIO according to the message
-  if(topic=="esp8266/room/lamp"){
-      Serial.print("Changing Room lamp to ");
-      if(messageTemp == "on"){
-        Serial.print("On");
-      }
-      else if(messageTemp == "off"){
-        Serial.print("Off");
+  if (topic == reg_res_topic){
+      Serial.println("Registration response received... ");
+      if(messageTemp == "success"){
+        Serial.println("Registration response success ... ");
+        is_registered = true;
+        
       }
   }
+  
+ 
+  /* If a message is received on the topic room/lamp, 
+   you check if the message is either on or off. 
+  Turns the lamp GPIO according to the message */
+  
+  if(topic==TOPIC_AC_TEMP_ACTION){
+      Serial.print("Changing AC temperature to ");
+      Serial.println(messageTemp);
+  }
+
+  if(topic==TOPIC_AC_POWER){
+      if(messageTemp == "on"){
+        Serial.print(" Turning AC On");
+      }
+      else if(messageTemp == "off"){
+        Serial.print(" Turning AC Off");
+      }
+  }
+   
   Serial.println();
 }
 
 
-// This functions reconnects your ESP8266 to your MQTT broker
-// Change the function below if you want to subscribe to more topics with your ESP8266
-void reconnect() {
+/* This functions reconnects your ESP8266 to your MQTT broker
+ * Change the function below if you want to subscribe to more topics with your ESP8266  
+ */
+ void reconnect() {
   // Loop until we're reconnected
   while (!client.connected()) {
     Serial.print("Attempting MQTT connection...");
     // Attempt to connect
-    /*
-     YOU MIGHT NEED TO CHANGE THIS LINE, IF YOU'RE HAVING PROBLEMS WITH MQTT MULTIPLE CONNECTIONS
-     To change the ESP device ID, you will have to give a new name to the ESP8266.
-     Here's how it looks:
-       if (client.connect("ESP8266Client")) {
-     You can do it like this:
-       if (client.connect("ESP1_Office")) {
-     Then, for the other ESP:
-       if (client.connect("ESP2_Garage")) {
-      That should solve your MQTT multiple connections problem
-    */
-    if (client.connect("ESP8266Client")) {
+    if (!client.connect(mDevice_id.c_str())) {
       Serial.println("connected");
-      // Subscribe or resubscribe to a topic
-      // You can subscribe to more topics (to control more LEDs in this example)
-      client.subscribe("esp8266/room/lamp");
+      mqtt_subscribe_setup();
+      break;
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
@@ -246,13 +333,66 @@ void reconnect() {
       delay(5000);
     }
   }
+   
 }
 
+/*
+ * Publish message 
+ */
+void publish_message() {
+  
+  // Timers auxiliar variables
+  long now = millis();
+  long lastMeasure = 0;
+
+  char payload[BUF_SIZE] = {0};
+  long randNumber = random(300);
+  bool need_to_pub = (now - lastMeasure) > 1000;
+  
+  if (!need_to_pub) 
+    return;
+  
+  lastMeasure = now;
+  
+  /* Read temperature from sensor i.e gpio */
+  float temp = randNumber;
+  if (isnan(temp)) {
+    Serial.println("Failed to read data from sensor!");
+    return;
+  }
+  dtostrf(temp, 6, 2, payload);
+  Serial.print("Publish : ");
+  Serial.print(TOPIC_AC_TEMP_STATUS);
+  Serial.print("   ");
+  Serial.println(payload);
+  client.publish(TOPIC_AC_TEMP_STATUS, payload);
+}
+
+
+
+/*
+ *  Subcribe required topics
+ */
+
+void mqtt_subscribe_setup(){
+  client.subscribe(TOPIC_AC_TEMP_ACTION);
+  client.subscribe(TOPIC_AC_POWER);
+}
+/*
+ * Mqtt setup
+ */
 void mqtt_setup() {
-  client.setServer(mqtt_server, 1883);
+  client.setServer(mqtt_broker_host, mqtt_broker_port);
   client.setCallback(callback);
+  if (!client.connected()) {
+    client.connect(mDevice_id.c_str());
+  }
+  mqtt_subscribe_setup();
 }
 
+/*
+ * Board setup 
+ */
 void setup() {
   Serial.begin(115200);
   // spiffs setup
@@ -264,34 +404,31 @@ void setup() {
   Serial.println("wifi_setup.......ok");
   mqtt_setup();
   Serial.println("mqtt_setup.......ok");
+  device_setup();
+  Serial.println("device_setup.......ok");
+
   randomSeed(analogRead(0));
 }
 
+/*
+ * Board loop function
+ */
 void loop() {
   // put your main code here, to run repeatedly:
-  static char payload[BUF_SIZE] = {0};
-  long randNumber;
-  randNumber = random(300);
   if (!client.connected()) {
     reconnect();
   }
+  
   if(!client.loop())
-    client.connect("ESP8266Client");
-  now = millis();
+    client.connect(mDevice_id.c_str());
 
-  if (now - lastMeasure > 1000) {
-     lastMeasure = now;
-    // Read temperature as Celsius (the default)
-    float temp = randNumber;
-
-    // Check if any reads failed and exit early (to try again).
-    if (isnan(temp)) {
-      Serial.println("Failed to read data from sensor!");
+  delay(1000);
+  if (!is_registered) {
+      Serial.println("Waiting for device registration....");
       return;
-    }
-
-    dtostrf(temp, 6, 2, payload);
-    client.publish("esp8266/room/temperature", payload);
-
   }
+  
+  publish_message();
+  
+ 
 }
