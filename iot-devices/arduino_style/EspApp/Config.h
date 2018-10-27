@@ -15,5 +15,11 @@
 #define MQTT_BROKER_HOST  "iot.eclipse.org"
 #define MQTT_BROKER_PORT  1883
 
+// #define USE_FIX_SSID
+#ifdef USE_FIX_SSID
+#define FIX_SSID        "TX2"
+#define FIX_PASSWORD    "TX2@rr112"
+#endif
+
 
 #endif

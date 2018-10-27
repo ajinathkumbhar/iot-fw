@@ -162,3 +162,17 @@ char Esp8266Boardconfig::getStatus() {
 void Esp8266Boardconfig::setStatus(char st) {
     this->status = st;
 }
+
+bool Esp8266Boardconfig::wifiConnect(String ssid, String password) {
+  Serial.println("Use fix wifi connection");
+  WiFi.begin(this->ssid.c_str(), this->password.c_str());
+  Serial.print("Connecting ...");
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println();
+  Serial.print("Connected, IP address: ");
+  Serial.println(WiFi.localIP());
+}

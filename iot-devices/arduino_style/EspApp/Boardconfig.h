@@ -5,10 +5,10 @@
 
 class Boardconfig {
   public:
-    char status[BUF_SIZE]; //= {0};
-    char dev_id[BUF_SIZE]; //= {0};
-    char ssid[BUF_SIZE]; //= {0};
-    char password[BUF_SIZE];// = {0};
+    char status;
+    String deviceId;
+    String ssid;
+    String password;
     Boardconfig();
 
 };

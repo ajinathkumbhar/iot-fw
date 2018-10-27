@@ -8,10 +8,10 @@
 
 class Esp8266Boardconfig {
   private:
-    char status; //= {0};
-    String deviceId; //= {0};
-    String ssid; //= {0};
-    String password;// = {0};
+    char status;
+    String deviceId;
+    String ssid;
+    String password;
     Utils mUtils;
     bool initDone;
     bool startSmartConfig(void);
@@ -28,5 +28,6 @@ class Esp8266Boardconfig {
     String getDeviceId(void);
     char getStatus(void);
     void setStatus(char st);
+    bool wifiConnect(String ssid, String password);
 };
 #endif

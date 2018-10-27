@@ -34,7 +34,11 @@ void setupLightPoint() {
 
 // ESP board setup
 void setupBoard() {
+  #ifndef USE_FIX_SSID
   mBoardconfig.doWifiSetup();
+  #else
+  mBoardconfig.wifiConnect(FIX_SSID, FIX_PASSWORD);
+  #endif
   Serial.println("wifi_setup.......ok");
 }
 
