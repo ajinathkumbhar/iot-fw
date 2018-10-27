@@ -16,7 +16,7 @@ EspLightPoint * mLightPoint;
 
 //setup light point device
 void setupLightPoint() {
-  String devId = String(mBoardconfig.dev_id);
+  String devId = String(mBoardconfig.getDeviceId());
   String mqttHost = String(MQTT_BROKER_HOST);
   int mqttPort = MQTT_BROKER_PORT;
 
@@ -34,11 +34,6 @@ void setupLightPoint() {
 
 // ESP board setup
 void setupBoard() {
-  char dev_id[BUF_SIZE] = {0};
-  if ( !mBoardconfig.isWifiConfigured()) {
-    mUtils.genDeviceId(dev_id);
-    mBoardconfig.setDeviceId(dev_id);
-  }
   mBoardconfig.doWifiSetup();
   Serial.println("wifi_setup.......ok");
 }
@@ -47,7 +42,7 @@ void setup() {
   Serial.begin(115200);
   // spiffs setup
   if (!mSpiffs.init()) {
-  Serial.println("failed to setup file system");
+    Serial.println("failed to setup file system");
   }
 
   mSpiffs.dumpStorageStats();

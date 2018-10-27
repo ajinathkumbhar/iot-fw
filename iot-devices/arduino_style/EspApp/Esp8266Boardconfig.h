@@ -2,22 +2,31 @@
 #define HEADER_ESP8266BOARDCONFIG
 
 #include "Boardconfig.h"
+#include "Utils.h"
 
 #define BOARD_CONF    "/config.txt"
 
-class Esp8266Boardconfig : public Boardconfig {
+class Esp8266Boardconfig {
   private:
+    char status; //= {0};
+    String deviceId; //= {0};
+    String ssid; //= {0};
+    String password;// = {0};
+    Utils mUtils;
     bool initDone;
     bool startSmartConfig(void);
   public:
     Esp8266Boardconfig();
-    bool setDeviceId(char * id);
-    bool setSsid(char * ssid);
-    bool setPassword(char * password);
+    bool setDeviceId(String id);
+    bool setSsid(String ssid);
+    bool setPassword(String password);
     bool loadConfigFromFlash(void);
     bool loadConfigToFlash(void);
     void doWifiSetup(void);
     bool isWifiConfigured(void);
     bool factoryReset(bool configReset);
+    String getDeviceId(void);
+    char getStatus(void);
+    void setStatus(char st);
 };
 #endif

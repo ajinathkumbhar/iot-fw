@@ -7,42 +7,53 @@
 Esp8266Boardconfig::Esp8266Boardconfig() {
     Serial.println("Esp8266Boardconfig constructor");
     initDone = false;
+    this->status = 0;
 }
 
-bool Esp8266Boardconfig::setDeviceId(char * id) {
-    strncpy(dev_id,id,BUF_SIZE - 1);
+bool Esp8266Boardconfig::setDeviceId(String id) {
+    this->deviceId = id ;
+    Serial.print("set device id : ");
+    Serial.println(this->deviceId);
 }
 
-bool Esp8266Boardconfig::setSsid(char * ssid) {
-    strncpy(this->ssid,ssid,BUF_SIZE - 1);
+bool Esp8266Boardconfig::setSsid(String ssid) {
+    this->ssid = ssid;
 }
 
-bool Esp8266Boardconfig::setPassword(char * password) {
-    strncpy(this->password,password,BUF_SIZE - 1);
+bool Esp8266Boardconfig::setPassword(String password) {
+    this->password = password;
 }
 
 bool Esp8266Boardconfig::loadConfigFromFlash(void) {
  //Read File data
+  char devId[BUF_SIZE] = {0};
+  char ssidName[BUF_SIZE] = {0};
+  char ssidPassword[BUF_SIZE] = {0};
+
   File f = SPIFFS.open(BOARD_CONF, "r");
   if (!f) {
     Serial.println("file open failed");
     return false;
   }
 
-  f.readBytes(status,BUF_SIZE);
-  f.readBytes(dev_id,BUF_SIZE);
-  f.readBytes(ssid,BUF_SIZE);
-  f.readBytes(password,BUF_SIZE);
+  this->status = f.read();
+  f.readBytes(devId,BUF_SIZE);
+  f.readBytes(ssidName,BUF_SIZE);
+  f.readBytes(ssidPassword,BUF_SIZE);
   f.close();  //Close file
 
-  Serial.print("status: ");
-  Serial.println(status[0]);
-  Serial.print("device ID: ");
-  Serial.println(dev_id);
-  Serial.print("SSID     : ");
-  Serial.println(ssid);
-  Serial.print("Password : ");
-  Serial.println(password);
+  this->deviceId = String(devId);
+  this->ssid = String(ssidName);
+  this->password = String(ssidPassword);
+
+  Serial.print("Wifi configuration  : ");
+  Serial.println(isWifiConfigured());
+  Serial.print("device ID           : ");
+  Serial.println(this->deviceId);
+  Serial.print("SSID                : ");
+  Serial.println(this->ssid);
+  Serial.print("Password            : ");
+  Serial.println(this->password);
   Serial.println(".........");
 //   /delay(1000);
   return true;
@@ -51,15 +62,15 @@ bool Esp8266Boardconfig::loadConfigFromFlash(void) {
 bool Esp8266Boardconfig::loadConfigToFlash() {
   File f = SPIFFS.open(BOARD_CONF, "w");
   if (!f) {
-    Serial.println("file open failed");
+    Serial.println("Board config file open failed");
     return false;
   }
   //Write data to file
-  Serial.println("storing wifi configuration");
-  f.write((uint8_t *)status,BUF_SIZE);
-  f.write((uint8_t *)dev_id,BUF_SIZE);
-  f.write((uint8_t *)ssid,BUF_SIZE);
-  f.write((uint8_t *)password,BUF_SIZE);
+  Serial.println("Store wifi configuration");
+  f.write((uint8_t)this->status);
+  f.write((uint8_t *)this->deviceId.c_str(),BUF_SIZE);
+  f.write((uint8_t *)this->ssid.c_str(),BUF_SIZE);
+  f.write((uint8_t *)this->password.c_str(),BUF_SIZE);
   f.close();
 //   delay(1000);
   return true;
@@ -67,17 +78,20 @@ bool Esp8266Boardconfig::loadConfigToFlash() {
 
 void Esp8266Boardconfig::doWifiSetup() {
   if (loadConfigFromFlash() != true ) {
-      Serial.println("Err : Load board config.......fail");
+      Serial.println("Load board config.......fail");
   }
-  if (status[0] != 0xff) {
-    Serial.println("Err : user config corroupted, need to reconfigure.......fail");
+
+  if ( !isWifiConfigured() ) {
+    Serial.println("Wifi not configured... starting smart connfig...");
     startSmartConfig();
-    status[0] = 0xff;
+    this->status = this->status | 0x01;
+    this->deviceId = mUtils.genDeviceId();
     loadConfigToFlash();
     return;
   }
-  Serial.println("User config found...");
-  WiFi.begin(ssid, password);
+
+  Serial.println("Wifi already configured");
+  WiFi.begin(this->ssid.c_str(), this->password.c_str());
   Serial.print("Connecting ...");
   while (WiFi.status() != WL_CONNECTED)
   {
@@ -101,14 +115,14 @@ bool Esp8266Boardconfig::startSmartConfig() {
     Serial.print(".");
   }
 
-  strncpy(this->ssid,WiFi.SSID().c_str(),sizeof(this->ssid));
-  strncpy(this->password,WiFi.psk().c_str(),sizeof(this->password));
+  this->ssid = WiFi.SSID();
+  this->password = WiFi.psk();
 
   Serial.println("done!");
   Serial.print("ssid:");
-  Serial.println(ssid);
+  Serial.println(this->ssid);
   Serial.print("password:");
-  Serial.println(password);
+  Serial.println(this->password);
 
   Serial.print("connecting...");
   while (WiFi.status() != WL_CONNECTED) {
@@ -125,13 +139,26 @@ bool Esp8266Boardconfig::startSmartConfig() {
 }
 
 bool Esp8266Boardconfig::isWifiConfigured() {
-    return status[0] != 0xff ? false : true;
+    bool result = this->status & 0x01;
+    return result;
 }
 
 bool Esp8266Boardconfig::factoryReset(bool configReset) {
-  memset(this->status, 0, sizeof(this->status));
-  memset(this->dev_id, 0, sizeof(this->dev_id));
-  memset(this->ssid, 0, sizeof(this->ssid));
-  memset(this->password, 0, sizeof(this->password));
+  this->status = '\0';
+  this->deviceId.remove(0);
+  this->ssid.remove(0);
+  this->password.remove(0);
   loadConfigToFlash();
+}
+
+String Esp8266Boardconfig::getDeviceId() {
+  return this->deviceId;
+}
+
+char Esp8266Boardconfig::getStatus() {
+    return this->status;
+}
+
+void Esp8266Boardconfig::setStatus(char st) {
+    this->status = st;
 }

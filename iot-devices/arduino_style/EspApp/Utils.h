@@ -4,7 +4,7 @@
 
 class Utils {
   public:
-    void genDeviceId(char * id);
+    String genDeviceId(void);
 };
 
 #endif

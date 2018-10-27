@@ -3,7 +3,6 @@
 
 #define BUF_SIZE                16
 
-
 #define TOPIC_REG_REQ       "esp8266/RegReq"
 #define TOPIC_REG_RES       "esp8266/RegRes/"
 #define TOPIC_FACTORY_RESET "esp8266/reset"

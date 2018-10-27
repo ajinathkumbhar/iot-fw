@@ -8,7 +8,6 @@ EspLightPoint::EspLightPoint(String deviceId) {
     mqttClient.setCallback([this] (char* topic, byte* payload, unsigned int length) { this->messageCallback(topic, payload, length); });
     mqttClientId = deviceId;
     mBoard.loadConfigFromFlash();
-    
 }
 
 bool EspLightPoint::setGatewayServer(String hostname, int port) {
@@ -43,30 +42,31 @@ bool EspLightPoint::doSubcription() {
 
 
 bool EspLightPoint::sendRegistrationReq() {
- char payload[BUF_SIZE] = {0};
- String topicRegRes(TOPIC_REG_RES);
- topicRegRes += mqttClientId;
+    char payload[BUF_SIZE] = {0};
+    String topicRegRes(TOPIC_REG_RES);
+    topicRegRes += mqttClientId;
 
- if (isRegistered()) {
-     Serial.println("Device registered...");
-     return true;
- }
- Serial.println("Device not registered...");
+    if (isRegistered()) {
+        Serial.println("EspLightPoint already registerd");
+        return true;
+    }
 
- mqttClient.publish(TOPIC_REG_REQ,mqttClientId.c_str());
- Serial.println("Device registration req sent...");
- Serial.print("Topic   : ");
- Serial.println(TOPIC_REG_REQ);
- Serial.print("payload : ");
- Serial.println(mqttClientId.c_str());
+    Serial.println("EspLightPoint not registerd");
+    mqttClient.publish(TOPIC_REG_REQ,mqttClientId.c_str());
+    Serial.println("Device registration req sent...");
+    Serial.print("Topic   : ");
+    Serial.println(TOPIC_REG_REQ);
+    Serial.print("payload : ");
+    Serial.println(mqttClientId.c_str());
 
- Serial.print("Subscribe to : ");
- Serial.println(topicRegRes.c_str());
- mqttClient.subscribe(topicRegRes.c_str());
+    Serial.print("Subscribe to : ");
+    Serial.println(topicRegRes.c_str());
+    mqttClient.subscribe(topicRegRes.c_str());
 }
 
 bool EspLightPoint::isRegistered() {
-    return mBoard.status[1] != 0xff ? false : true;
+    bool result = mBoard.getStatus() & 0x02;
+    return result;
 }
 
 void EspLightPoint::reconnect() {
@@ -140,7 +140,7 @@ void EspLightPoint::messageCallback(String topic, byte* message, unsigned int le
         Serial.println("Registration response received... ");
         if(messageTemp == "success") {
             Serial.println("Registration response success ... ");
-            mBoard.status[1] = 0xff;
+            mBoard.setStatus(mBoard.getStatus() | 0x02);
             mBoard.loadConfigToFlash();
         }
     }
