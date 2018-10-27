@@ -1,0 +1,8 @@
+1. Make dynamic topic creation with device id
+2. Use device specific factory reset topic in gateway.
+3. Reset connection on Gateway power on reset.
+4. Do not check device registration in main function 
+5. Use LED for power topic.
+6. Add logging with format and log level.
+7. Collect bootup logs and send to gateway
+- Create LED pattern for all type status and errors.
