@@ -90,6 +90,11 @@ void EspLightPoint::reconnect() {
 }
 
 void EspLightPoint::sendLumniousStatus() {
+  if ( !isRegistered() ) {
+      Serial.println("Waiting for device registration....");
+      return;
+  }
+
  long now = millis();
  long lastMeasure = 0;
  char payload[BUF_SIZE] = {0};

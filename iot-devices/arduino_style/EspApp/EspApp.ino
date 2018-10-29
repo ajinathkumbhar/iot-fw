@@ -2,6 +2,7 @@
 #include <FS.h>
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
+#include <Ticker.h>
 #include "EspSpiffs.h"
 #include "Esp8266Boardconfig.h"
 #include "EspLightPoint.h"
@@ -13,6 +14,11 @@ EspSpiffs mSpiffs;
 Esp8266Boardconfig mBoardconfig;
 Utils mUtils;
 EspLightPoint * mLightPoint;
+
+void ICACHE_RAM_ATTR sendLumniousStatus() {
+  mLightPoint->sendLumniousStatus();
+  timer1_write(1);
+}
 
 //setup light point device
 void setupLightPoint() {
@@ -29,6 +35,12 @@ void setupLightPoint() {
   }
   mLightPoint->sendRegistrationReq();
   mLightPoint->doSubcription();
+  mLightPoint->start();
+  timer1_disable();
+  timer1_attachInterrupt(sendLumniousStatus);
+  timer1_isr_init();
+  timer1_enable(TIM_DIV16, TIM_EDGE, TIM_SINGLE);
+  timer1_write(1);
   Serial.println("setupLightPoint.......ok");
 }
 
@@ -41,6 +53,7 @@ void setupBoard() {
   #endif
   Serial.println("wifi_setup.......ok");
 }
+
 
 void setup() {
   Serial.begin(115200);
@@ -65,13 +78,5 @@ void loop() {
   if(!mLightPoint->start()) {
     mLightPoint->reconnect();
   }
-
-  delay(1000);
-  while( !mLightPoint->isRegistered() ) {
-      Serial.println("Waiting for device registration....");
-      return;
-  }
-
-  mLightPoint->sendLumniousStatus();
 
 }

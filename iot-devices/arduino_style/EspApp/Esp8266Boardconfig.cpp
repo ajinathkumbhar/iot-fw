@@ -66,7 +66,7 @@ bool Esp8266Boardconfig::loadConfigToFlash() {
     return false;
   }
   //Write data to file
-  Serial.println("Store wifi configuration");
+  Serial.println("Store board configuration");
   f.write((uint8_t)this->status);
   f.write((uint8_t *)this->deviceId.c_str(),BUF_SIZE);
   f.write((uint8_t *)this->ssid.c_str(),BUF_SIZE);
