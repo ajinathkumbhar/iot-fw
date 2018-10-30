@@ -46,12 +46,21 @@ void setupLightPoint() {
 
 // ESP board setup
 void setupBoard() {
+  int timeout = 0;
   #ifndef USE_FIX_SSID
   mBoardconfig.doWifiSetup();
   #else
   mBoardconfig.wifiConnect(FIX_SSID, FIX_PASSWORD);
   #endif
   Serial.println("wifi_setup.......ok");
+  while (!mBoardconfig.isInternetServiceAvailable()) {
+    if ( timeout++ >= INTERNET_CONN_TIMEOUT ) {
+      ESP.reset();
+      delay(5000);
+    }
+    delay(1000);
+    Serial.println("Internet connection check required...");
+  }
 }
 
 

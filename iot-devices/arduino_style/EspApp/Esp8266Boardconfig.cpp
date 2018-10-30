@@ -210,3 +210,20 @@ bool Esp8266Boardconfig::wifiConnect(String ssid, String password) {
   this->deviceId = mUtils.genDeviceId();
   loadConfigToFlash();
 }
+
+bool Esp8266Boardconfig::isInternetServiceAvailable() {
+  WiFiClient client;
+  char server[] = TEST_GOOGLE_SERVER;
+
+  if (!client.connect(server, 80)) {
+    Serial.println("Internet connection not available ...");
+    return false;
+  }
+  Serial.println("connected to internet");
+  // Make a HTTP request:
+  client.println("GET /search?q=arduino HTTP/1.1");
+  client.println("Host: www.google.com");
+  client.println("Connection: close");
+  client.println();
+  return true;
+}

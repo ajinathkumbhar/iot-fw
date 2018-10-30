@@ -15,14 +15,17 @@
 #define MQTT_BROKER_HOST  "iot.eclipse.org"
 #define MQTT_BROKER_PORT  1883
 
+#define INTERNET_CONN_TIMEOUT   15
+#define TEST_GOOGLE_SERVER  "www.google.com"
 #define FORCE_SMARTCONFIG               1
 
-//#define USE_FIX_SSID
+#define USE_FIX_SSID
 #ifdef USE_FIX_SSID
 #define FORCE_SMARTCONFIG   0
-#define FIX_SSID            "X1"
-#define FIX_PASSWORD        "123456789"
+#define FIX_SSID            "rajivshankar"
+#define FIX_PASSWORD        ""
 #endif
 
 #define SERIAL_LOG_CHARCOUNT_IN_LINE    24
+
 #endif
