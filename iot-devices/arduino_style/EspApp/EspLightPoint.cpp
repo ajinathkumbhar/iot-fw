@@ -184,7 +184,6 @@ bool EspLightPoint::start(void) {
     if(!mqttClient.loop()) {
         return false;
     }
-
     return true;
 }
 

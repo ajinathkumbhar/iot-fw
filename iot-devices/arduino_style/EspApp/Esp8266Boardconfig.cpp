@@ -8,6 +8,7 @@ Esp8266Boardconfig::Esp8266Boardconfig() {
     Serial.println("Esp8266Boardconfig constructor");
     initDone = false;
     this->status = 0;
+    mOnBoardLED  = new EspLight(LED_ONBOARD);
 }
 
 bool Esp8266Boardconfig::setDeviceId(String id) {
@@ -77,11 +78,12 @@ bool Esp8266Boardconfig::loadConfigToFlash() {
 }
 
 void Esp8266Boardconfig::doWifiSetup() {
+  int lineCharCount = 0;
   if (loadConfigFromFlash() != true ) {
       Serial.println("Load board config.......fail");
   }
 
-  if ( !isWifiConfigured() ) {
+  if ( FORCE_SMARTCONFIG || !isWifiConfigured() ) {
     Serial.println("Wifi not configured... starting smart connfig...");
     startSmartConfig();
     this->status = this->status | 0x01;
@@ -95,8 +97,13 @@ void Esp8266Boardconfig::doWifiSetup() {
   Serial.print("Connecting ...");
   while (WiFi.status() != WL_CONNECTED)
   {
-    delay(500);
+    delay(200);
+    if ( lineCharCount++ > SERIAL_LOG_CHARCOUNT_IN_LINE ) {
+      Serial.println();
+      lineCharCount = 0;
+    }
     Serial.print(".");
+    mOnBoardLED->wifiConnecting();
   }
   Serial.println();
   Serial.print("Connected, IP address: ");
@@ -104,6 +111,7 @@ void Esp8266Boardconfig::doWifiSetup() {
 }
 
 bool Esp8266Boardconfig::startSmartConfig() {
+  int lineCharCount = 0;
   Serial.println("");
   WiFi.mode(WIFI_STA);
   delay(500);
@@ -111,8 +119,14 @@ bool Esp8266Boardconfig::startSmartConfig() {
   Serial.print("smart config...");
   WiFi.beginSmartConfig();
   while (!WiFi.smartConfigDone()) {
-    delay(1000);
+    delay(200);
     Serial.print(".");
+    if (lineCharCount++ > SERIAL_LOG_CHARCOUNT_IN_LINE) {
+      Serial.println();
+      lineCharCount = 0;
+    }
+    Serial.print(".");
+    mOnBoardLED->smartConfigConnecting();
   }
 
   this->ssid = WiFi.SSID();
@@ -125,9 +139,17 @@ bool Esp8266Boardconfig::startSmartConfig() {
   Serial.println(this->password);
 
   Serial.print("connecting...");
+
+  lineCharCount = 0;
   while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
+    delay(200);
+    if (lineCharCount++ > SERIAL_LOG_CHARCOUNT_IN_LINE) {
+      Serial.println();
+      lineCharCount = 0;
+    }
     Serial.print(".");
+    mOnBoardLED->wifiConnecting();
+
   }
   Serial.println("done!");
 
@@ -164,6 +186,7 @@ void Esp8266Boardconfig::setStatus(char st) {
 }
 
 bool Esp8266Boardconfig::wifiConnect(String ssid, String password) {
+  int lineCharCount = 0;
   Serial.println("Use fix wifi connection");
   WiFi.begin(ssid.c_str(), password.c_str());
   Serial.print("ssid:");
@@ -171,10 +194,14 @@ bool Esp8266Boardconfig::wifiConnect(String ssid, String password) {
   Serial.print("password:");
   Serial.println(password);
   Serial.print("Connecting ...");
-  while (WiFi.status() != WL_CONNECTED)
-  {
+  while (WiFi.status() != WL_CONNECTED) {
     delay(500);
+    if (lineCharCount++ > SERIAL_LOG_CHARCOUNT_IN_LINE) {
+      Serial.println();
+      lineCharCount = 0;
+    }
     Serial.print(".");
+    mOnBoardLED->wifiConnecting();
   }
   Serial.println();
   Serial.print("Connected, IP address: ");
